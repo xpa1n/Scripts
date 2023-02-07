@@ -133,47 +133,47 @@ end)
 sx:Label("-- Island Teleport --")
 
 sx:Button("Mountains",function()
-game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = game:GetService("Workspace").Map.Islands.Mountains.Grass.Grass.CFrame
+game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-1777.05969, 473.427765, -1298.41687, 0.714867771, 1.12815597e-08, 0.699259639, -4.25165467e-08, 1, 2.73319767e-08, -0.699259639, -4.92688557e-08, 0.714867771)
 end)
 
 sx:Button("IceIsland",function()
-game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = game:GetService("Workspace").Map.Islands.IceIsland.Part.CFrame
+game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-5326.43506, 515.802002, -1814.30664, -0.0832328424, -3.54851579e-08, 0.996530116, -1.29052165e-08, 1, 3.45308386e-08, -0.996530116, -9.98633709e-09, -0.0832328424)
 end)
 
 sx:Button("DesertWoods",function()
-game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = game:GetService("Workspace").Map.Islands.DesertWoods.Desert.BaseSand.Union.CFrame
+game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(1757.50122, 483.524414, -2056.17627, -0.282744437, -6.5758563e-08, -0.959195256, 1.03300994e-08, 1, -7.16010007e-08, 0.959195256, -3.0153366e-08, -0.282744437)
 end)
 
 sx:Button("Tournament",function()
-game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = game:GetService("Workspace").Map.Islands.Tournament.GrassBase.CFrame
+game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-910.821167, 476.926483, -3383.6543, 0.993600667, 2.88275164e-08, 0.112949818, -1.89126173e-08, 1, -8.88529641e-08, -0.112949818, 8.61481908e-08, 0.993600667)
 end)
 
 sx:Button("Volcano",function()
-game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = game:GetService("Workspace").Map.Islands.Volcano.Volcano.Union.CFrame
+game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(835.50177, 1028.01685, -5090.11768, 0.289804488, -8.13992762e-10, -0.957085848, -3.88843313e-09, 1, -2.02790407e-09, 0.957085848, 4.30926006e-09, 0.289804488)
 end)
 
 sx:Button("TropicalIsland",function()
-game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = game:GetService("Workspace").Map.Islands.TropicalIsland.Pebble.CFrame
+game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-1598.57642, 497.986115, -5985.85498, 0.881060839, 1.200572e-08, 0.473003, -1.5312688e-08, 1, 3.1409737e-09, -0.473003, -1.00103366e-08, 0.881060839)
 end)
 
 sx:Button("LargeIsland",function()
-game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = game:GetService("Workspace").Map.Islands.LargeIsland.Parts.Forest.Ground.Grass.CFrame
+game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-2189.00146, 477.380432, 1601.32153, 0.917621791, -4.86310121e-08, 0.397454739, 6.46895444e-08, 1, -2.6995588e-08, -0.397454739, 5.04829067e-08, 0.917621791)
 end)
 
 sx:Button("Winter",function()
-game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = game:GetService("Workspace").Map.Islands.Winter.Part.CFrame
+game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-3489.85767, 519.313599, -2450.98047, -0.987529278, 1.85139495e-08, -0.157435551, 5.10982145e-09, 1, 8.55451674e-08, 0.157435551, 8.36738892e-08, -0.987529278)
 end)
 
 sx:Button("Plains",function()
-game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = game:GetService("Workspace").Map.Islands.Plains.Base.CFrame
+game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-237.824005, 567.189575, 883.082153, 0.658311129, -1.79035814e-10, -0.752745926, -4.09201117e-10, 1, -5.95708927e-10, 0.752745926, 7.00186298e-10, 0.658311129)
 end)
 
 sx:Button("Forest",function()
-game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = game:GetService("Workspace").Map.Islands.Forest.Base.Grass.CFrame
+game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-3535.28784, 527.217773, -4655.09229, 0.223640189, -3.84026784e-08, 0.974671781, 2.41689317e-08, 1, 3.38550201e-08, -0.974671781, 1.59854334e-08, 0.223640189)
 end)
 
 sx:Button("Desert",function()
-game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = game:GetService("Workspace").Map.Islands.Desert.Base.CFrame
+game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(3399.25708, 644.655884, -233.228531, -0.576870382, 4.96522894e-08, -0.816835701, -1.66418115e-08, 1, 7.25390166e-08, 0.816835701, 5.54392336e-08, -0.576870382)
 end)
 
 local sy = s:Tab("Mob Farm")
@@ -224,6 +224,26 @@ end)
 end
     
 end)
+local sqwe = s:Tab("Player")
+sqwe:Slider("WalkSpeed",16,300,16,function(t)
+    _G.ws = t; 
+    local plr = game:service'Players'.LocalPlayer;
+    plr.Character.Humanoid:GetPropertyChangedSignal'WalkSpeed':Connect(function()
+    plr.Character.Humanoid.WalkSpeed = _G.ws;
+    end)
+    plr.Character.Humanoid.WalkSpeed = _G.ws; 
+end)
+sqwe:Slider("JumpPower",60,300,16,function(t)
+    _G.jp = t; 
+    local plr = game:service'Players'.LocalPlayer;
+    plr.Character.Humanoid:GetPropertyChangedSignal'JumpPower':Connect(function()
+    plr.Character.Humanoid.JumpPower = _G.jp;
+    end)
+    plr.Character.Humanoid.JumpPower = _G.jp;
+end)
+
+
+
 local sc = s:Tab("Credits!")
 
 sc:Label("")
