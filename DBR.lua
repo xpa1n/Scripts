@@ -178,14 +178,62 @@ end)
 
 local sy = s:Tab("Mob Farm")
 
-sy:Toggle("Auto Train Ki",function(t)
-getgenv().tk = t;
+sy:Label("-- Farm Mobs --")
 
-while wait() and getgenv().tk == true do
-    local button = game:service'VirtualInputManager'
-    
-    button:SendKeyEvent(true, "Q", false, game)
-    wait()
+sy:Toggle("Farm Dummy",function(t)
+getgenv().farmd = t;
+
+while wait() and getgenv().farmd do
+pcall(function()
+for i,v in pairs(game:GetService("Workspace").Map.NPCs:GetDescendants()) do
+        if v:IsA("Model") and v:FindFirstChild('HumanoidRootPart') and v:FindFirstChild('Humanoid') and v.Humanoid.Health > 0 and v.Name == 'Dummy' then
+        game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = v.HumanoidRootPart.CFrame * CFrame.new(0,0,5)
+        end
+end
+end)
 end
     
 end)
+
+sy:Toggle("Farm Saibamen",function(t)
+getgenv().farms = t;
+
+while wait() and getgenv().farms do
+pcall(function()
+for i,v in pairs(game:GetService("Workspace").Map.NPCs:GetDescendants()) do
+        if v:IsA("Model") and v:FindFirstChild('HumanoidRootPart') and v:FindFirstChild('Humanoid') and v.Humanoid.Health > 0 and v.Name == 'Saibamen' then
+        game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = v.HumanoidRootPart.CFrame * CFrame.new(0,0,5)
+        end
+end
+end)
+end
+    
+end)
+
+sy:Toggle("Farm Goku",function(t)
+getgenv().farmg = t;
+
+while wait() and getgenv().farmg do
+pcall(function()
+for i,v in pairs(game:GetService("Workspace").Map.NPCs:GetDescendants()) do
+        if v:IsA("Model") and v:FindFirstChild('HumanoidRootPart') and v:FindFirstChild('Humanoid') and v.Humanoid.Health > 0 and v.Name == 'Goku' then
+        game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = v.HumanoidRootPart.CFrame * CFrame.new(0,0,5)
+        end
+end
+end)
+end
+    
+end)
+local sc = s:Tab("Credits!")
+
+sc:Label("")
+sc:Label("")
+sc:Label("Script made by pa1n#8015")
+sc:Label("")
+sc:Button("Join Discord (Click to Copy)",function()
+setclipboard("https://pa1n.xyz/discord")
+end)
+sc:Label("If you need help or the script is not working let me know in ")
+sc:Label("discord")
+sc:Label("")
+sc:Label("[Press K to Hide/Show This GUI]")
