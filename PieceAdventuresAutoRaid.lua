@@ -8,12 +8,12 @@ task.spawn(function()
     while _G.AutoRaid do
         if game:GetService("Workspace").Worlds.World1.Lobby.Raid.RaidGUI.SurfaceGui.Timer.Text:match("Raid In Progress") then
             if _G.BoogieRaid then
-                game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(43.251667, 3.07534146, -7535.1084, -0.650681496, 5.46366365e-08, -0.759350777, -9.96143257e-09, 1, 8.0487645e-08, 0.759350777, 5.99360419e-08, -0.650681496)
+                game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-49.3240776, -3.19259834, -7561.72412, 0.953682899, 2.59311062e-08, -0.300813824, -2.35643505e-09, 1, 7.87324694e-08, 0.300813824, -7.43769633e-08, 0.953682899)
                 game.Players.LocalPlayer.Character.HumanoidRootPart.Anchored = true
                 repeat task.wait() until game:GetService("Workspace").Worlds.World1.Lobby.RaidLobby.Map.BuggyRaid:FindFirstChild("Teleport")
                 game.Players.LocalPlayer.Character.HumanoidRootPart.Anchored = false
             elseif _G.SawfishRaid then
-                game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-245.969528, -11.5013494, -7536.89111, 0.196591258, -5.2445511e-08, 0.980485559, -3.15925455e-08, 1, 5.98237548e-08, -0.980485559, -4.27368612e-08, 0.196591258)
+                game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-164.312729, 1.92312312, -7558.06104, 0.826286077, 7.20036724e-08, 0.563250721, -8.13450853e-08, 1, -8.50308179e-09, -0.563250721, -3.8791697e-08, 0.826286077)
                 game.Players.LocalPlayer.Character.HumanoidRootPart.Anchored = true
                 repeat task.wait() until game:GetService("Workspace").Worlds.World1.Lobby.RaidLobby.Map.BuggyRaid:FindFirstChild("Teleport")
                 game.Players.LocalPlayer.Character.HumanoidRootPart.Anchored = false
