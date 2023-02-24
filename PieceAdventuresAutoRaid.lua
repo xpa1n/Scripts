@@ -58,7 +58,7 @@ task.spawn(function()
 end)
 
 ---- KILL NOTIFICATIONS
-game:GetService("Players").pa1nx9.PlayerGui.MainGui.MainFrame.NotificationFrame.Visible = false;
+game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrame.NotificationFrame.Visible = false;
 
 ---- ANTI AFK
 pcall(function()
