@@ -1,4 +1,5 @@
 if _G.AutoRaid and game.PlaceId == 11582083063 then
+    wait(8)
     game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(397.592651, 60.478054, -4316.15527, 0.999958456, -8.54472688e-08, -0.0091136517, 8.53811812e-08, 1, -7.64078756e-09, 0.0091136517, 6.86233603e-09, 0.999958456)
     wait(3)
 end
