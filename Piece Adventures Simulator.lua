@@ -1,3 +1,5 @@
+pcall(function()
+
 for i,v in pairs (game:GetService("CoreGui"):GetChildren()) do
     if v.Name == "pa1nhub" then
         v:Destroy()
@@ -472,4 +474,6 @@ pcall(function()
     wait(1)
     vu:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
     end)
+end)
+
 end)
