@@ -6,7 +6,7 @@ end
 
 local VLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/xpa1n/library/main/CustomVepLibrary.lua"))()
 
-local s = VLib:Window("pa1n Scripts", "Piece Adventures", "")
+local s = VLib:Window("Scripts", "Piece Adventures", "")
 
 
 
@@ -34,6 +34,7 @@ function autocollectcoins()
     for i,v in pairs(coins) do 
     if v.Name == 'CoinDrop' then
         v.CFrame = game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame
+         wait(0.6)
     end
     end
 end
@@ -52,7 +53,7 @@ end
 
 sx:Toggle("Auto Attack/Skill/Support",function(t)
     getgenv().attacking = t;
-    while getgenv().attacking do
+    while task.wait() and getgenv().attacking do
         autoattack()
     end
 end)
@@ -61,11 +62,9 @@ end)
 
 sx:Toggle("Auto Collect Coins",function(t)
 getgenv().autocoins = t;
-while wait(0.6) and getgenv().autocoins do
-    task.spawn(function()    
+    while task.wait() and getgenv().autocoins do
         autocollectcoins()
-    end)
-end
+    end
 end)
 
 sx:Toggle("Auto Open Egg (World 1)",function(t)
@@ -109,8 +108,14 @@ game:GetService("ReplicatedStorage")._remotes.CodeFunction:InvokeServer(unpack(a
 
 local args = {[1] = "world2"}
 game:GetService("ReplicatedStorage")._remotes.CodeFunction:InvokeServer(unpack(args))
-end)
+        
+local args = {[1] = "update2"}
+game:GetService("ReplicatedStorage")._remotes.CodeFunction:InvokeServer(unpack(args))
+        
+local args = {[1] = "7klikeswoo"}
+game:GetService("ReplicatedStorage")._remotes.CodeFunction:InvokeServer(unpack(args))
 
+end)
 
 local sy = s:Tab("Mob Farm")
 sy:Label("(You need to be in the zone to farm)")
@@ -439,7 +444,7 @@ UIS.InputBegan:connect(function(UserInput)
 end)
 end)
 
-sqwe:Label("Built in Anti-AFK :)))")
+sqwe:Label("Built in Anti-AFK :)")
 
 
 local sc = s:Tab("Credits!")
