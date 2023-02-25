@@ -1,3 +1,5 @@
+repeat task.wait() until game:IsLoaded()
+
 local DiscordLib = loadstring(game:HttpGet"https://raw.githubusercontent.com/dawid-scripts/UI-Libs/main/discord%20lib.txt")()
 
 local win = DiscordLib:Window("pa1n Scripts")
@@ -378,13 +380,7 @@ if plr.Character:FindFirstChild("HumanoidRootPart") then
 end
 end
 
-coroutine.resume(coroutine.create(function()
-    while task.wait() do
-        if getgenv().bossfarm then
-            startbossfarm(getgenv().bossname)
-        end
-    end
-end))
+
 
 bossfarm:Dropdown("Select NPC",{"Cap Freeman", "Boogie", "Slasher", "Don Craig", "Sawfish", "Muncher", "Croc"}, function(t)
     getgenv().bossname = t;
@@ -439,6 +435,8 @@ plrtab:Label("Built in Anti-AFK :)")
 
 local credit = serv:Channel("Credits!")
 
+credit:Label("")
+credit:Label("")
 credit:Label("Script made by pa1n#8015 & Arpon AG#6612")
 credit:Label("")
 credit:Button("Join Discord (Click to Copy)",function()
@@ -448,9 +446,6 @@ credit:Label("If you need help or the script is not working let me know in ")
 credit:Label("discord")
 credit:Label("")
 credit:Label("[Press K to Hide/Show This GUI]")
-
----- KILL NOTIFICATIONS
-game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrame.NotificationFrame.Visible = false;
 
 ---- ANTI AFK
 pcall(function()
