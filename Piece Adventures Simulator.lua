@@ -435,8 +435,6 @@ plrtab:Label("Built in Anti-AFK :)")
 
 local credit = serv:Channel("Credits!")
 
-credit:Label("")
-credit:Label("")
 credit:Label("Script made by pa1n#8015 & Arpon AG#6612")
 credit:Label("")
 credit:Button("Join Discord (Click to Copy)",function()
@@ -444,8 +442,11 @@ setclipboard("https://pa1n.xyz/discord")
 end)
 credit:Label("If you need help or the script is not working let me know in ")
 credit:Label("discord")
-credit:Label("")
-credit:Label("[Press K to Hide/Show This GUI]")
+        
+        
+---- KILL NOTIFICATIONS
+game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrame.NotificationFrame.Visible = false;
+
 
 ---- ANTI AFK
 pcall(function()
