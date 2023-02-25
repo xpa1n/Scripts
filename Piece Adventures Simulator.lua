@@ -449,8 +449,6 @@ setclipboard("https://pa1n.xyz/discord")
 end)
 credit:Label("If you need help or the script is not working let me know in ")
 credit:Label("discord")
-credit:Label("")
-credit:Label("[Press K to Hide/Show This GUI]")
 
 ---- KILL NOTIFICATIONS
 game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrame.NotificationFrame.Visible = false;
