@@ -1,5 +1,3 @@
-repeat task.wait() until game:IsLoaded()
-
 function Code()
     print("Initializing Script")
     if JaninaHub then
@@ -594,7 +592,7 @@ local Window = JaninaKey:CreateWindow({
 Code()
 
 pcall(function()
-    queue_on_teleport("loadstring(game:HttpGet('https://raw.githubusercontent.com/xpa1n/Scripts/main/elementaldungeon2.lua'))()")
+    queue_on_teleport("repeat task.wait() until game:IsLoaded() loadstring(game:HttpGet('https://raw.githubusercontent.com/xpa1n/Scripts/main/elementaldungeon2.lua'))()")
 end)
 
 wait(3)
