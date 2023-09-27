@@ -1,3 +1,5 @@
+repeat task.wait() until game:IsLoaded()
+
 function Code()
     print("Initializing Script")
     if JaninaHub then
@@ -401,6 +403,23 @@ function Code()
             end
         end,
      })
+
+     local Section = dungeon:CreateSection("---")
+
+    local AutoRetry = dungeon:CreateToggle({
+        Name = "Auto Retry",
+        CurrentValue = false,
+        Flag = "Auto Retry", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
+        Callback = function(Value)
+            _G.AutoRetry = Value
+            while _G.AutoRetry and wait(5) do
+                if game:GetService("Players").LocalPlayer.PlayerGui.DungeonComplete.Main.Visible == true then
+                    wait(5) local args = {[1] = "Retry"}
+                    game:GetService("ReplicatedStorage").ReplicatedStorage.Packages.Knit.Services.PartyService.RF.VoteOn:InvokeServer(unpack(args))
+                end                
+            end
+        end,
+     })
     
      local Misc = Window:CreateTab("Misc", 4483345998) -- Title, Image
      local Section = Misc:CreateSection("---")
@@ -592,7 +611,7 @@ local Window = JaninaKey:CreateWindow({
 Code()
 
 pcall(function()
-    queue_on_teleport("repeat task.wait() until game:IsLoaded() loadstring(game:HttpGet('https://raw.githubusercontent.com/xpa1n/Scripts/main/elementaldungeon2.lua'))()")
+    queue_on_teleport("print('waiting for game ready') repeat task.wait() until game:IsLoaded() print('executing script') loadstring(game:HttpGet('https://raw.githubusercontent.com/xpa1n/Scripts/main/elementaldungeon2.lua'))()")
 end)
 
 wait(3)
