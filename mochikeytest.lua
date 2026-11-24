@@ -25,7 +25,7 @@
 	The game behind is blurred with a BlurEffect in Lighting. Nothing blurs GUI.
 ]]
 
-local MochiKey = { Version = "1.2" }
+local MochiKey = { Version = "1.4" }
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -49,9 +49,6 @@ local X = {
 	makefolder = fnOrNil(makefolder),
 	delfile = fnOrNil(delfile),
 	setclipboard = fnOrNil(setclipboard) or fnOrNil(toclipboard),
-	getclipboard = fnOrNil(getclipboard) or fnOrNil(fromclipboard),
-	keypress = fnOrNil(keypress),
-	keyrelease = fnOrNil(keyrelease),
 	-- Opening a browser: only some executors have this, under different names
 	openurl = fnOrNil(openurl) or fnOrNil(open_url) or fnOrNil(OpenURL)
 		or (type(syn) == "table" and fnOrNil(syn.open_url)) or nil,
@@ -518,6 +515,14 @@ local function draw(holder, bx, px, shapes, color, alpha)
 				inner = draw(clip, cb, px, { { "dot", cx, cy, R, R } }, color, alpha)
 			end
 			for _, p in ipairs(inner) do parts[#parts + 1] = p end
+		elseif k == "dome" then
+			-- Circle cut off flat at y = cut (only the part above shows)
+			local cx, cy, r, cut = s[2], s[3], s[4], s[5]
+			local cb = { cx - r, cy - r, r * 2, cut - (cy - r) }
+			local clip = frame(holder, { Position = P(cb[1], cb[2]), Size = S(cb[3], cb[4]), ClipsDescendants = true })
+			for _, p in ipairs(draw(clip, cb, px, { { "dot", cx, cy, r, r } }, color, alpha)) do
+				parts[#parts + 1] = p
+			end
 		elseif k == "text" then
 			local t = label(holder, {
 				AnchorPoint = C,
@@ -616,13 +621,15 @@ local function newMascot(parent, w, T, mood)
 	M.Root, M.Body = root, body
 
 	draw(body, BOX, px, { { "line", 32.5, 11, 39.5, 4.5, 5.5 } }, T.leaf)
-	-- Outline first (a little bigger), then the fill on top, so the two body shapes read as one
+	-- The mochi shape: a soft dome (a circle that matches the SVG's top curve, cut off
+	-- halfway down) sitting on a wide flat pill for the squashed bottom.
+	-- Outline first (a little bigger), then the fill on top, so the shapes read as one.
 	local e = (T.light and 1.6 or 1) / 2
 	draw(body, BOX, px, {
-		{ "rect", 6 - e, 12 - e, 52 + e * 2, 43 + e * 2, "full" },
-		{ "rect", 7 - e, 31 - e, 50 + e * 2, 24 + e * 2, 12 + e },
+		{ "dome", 32, 38, 26 + e, 42 },
+		{ "rect", 6 - e, 23 - e, 52 + e * 2, 32 + e * 2, "full" },
 	}, T.light and T.acc1 or BLACK, T.light and 0.4 or 0.12)
-	draw(body, BOX, px, { { "rect", 6, 12, 52, 43, "full" }, { "rect", 7, 31, 50, 24, 12 } }, T.knob)
+	draw(body, BOX, px, { { "dome", 32, 38, 26, 42 }, { "rect", 6, 23, 52, 32, "full" } }, T.knob)
 	draw(body, BOX, px, { { "dot", 16.5, 41.5, 4.2, 2.4 }, { "dot", 47.5, 41.5, 4.2, 2.4 } }, BLUSH, 0.75)
 
 	local face
@@ -808,25 +815,6 @@ local function openUrl(url)
 	if X.openurl and pcall(X.openurl, url) then return true end
 	if pcall(function() GuiService:OpenBrowserWindow(url) end) then return true end
 	return false
-end
-
--- Presses Ctrl+V for the player (for executors without getclipboard).
--- Uses the executor's keypress (Windows key codes) or VirtualInputManager.
-local function pressCtrlV()
-	if X.keypress and X.keyrelease then
-		local ok = pcall(X.keypress, 0x11) -- Ctrl
-		ok = ok and pcall(X.keypress, 0x56) -- V
-		pcall(X.keyrelease, 0x56)
-		pcall(X.keyrelease, 0x11)
-		if ok then return true end
-	end
-	local okVim, vim = pcall(function() return game:GetService("VirtualInputManager") end)
-	if not okVim or not vim then return false end
-	local ok = pcall(function() vim:SendKeyEvent(true, Enum.KeyCode.LeftControl, false, game) end)
-	ok = ok and pcall(function() vim:SendKeyEvent(true, Enum.KeyCode.V, false, game) end)
-	pcall(function() vim:SendKeyEvent(false, Enum.KeyCode.V, false, game) end)
-	pcall(function() vim:SendKeyEvent(false, Enum.KeyCode.LeftControl, false, game) end)
-	return ok
 end
 
 local function guiParent()
@@ -1141,9 +1129,9 @@ local function buildScreen(opt, K, T, keyPath)
 	keyIcon.Frame.AnchorPoint = Vector2.new(0, 0.5)
 	keyIcon.Frame.Position = UDim2.new(0, 16, 0.5, 0)
 
-	local pasteTextW = measure("Paste", F_BODY_X, 12.5).X
-	local pasteW = math.ceil(11 + 15 + 6 + pasteTextW + 13)
-	local inputW = 339 - pasteW - 10 - 44
+	-- No Paste button (most executors can't read the clipboard). Ctrl+V works in the box.
+	-- The box runs from the key icon to 10px before the arrow.
+	local inputW = 345 - 10 - 44
 	local input = make("TextBox", {
 		Position = UDim2.fromOffset(44, 0),
 		Size = UDim2.new(0, inputW, 1, 0),
@@ -1158,23 +1146,6 @@ local function buildScreen(opt, K, T, keyPath)
 		ClearTextOnFocus = false,
 		ClipsDescendants = true,
 		Parent = field,
-	})
-
-	local paste = button(field, { Size = UDim2.fromOffset(pasteW, 40), BackgroundColor3 = T.el, BackgroundTransparency = 0 })
-	paste.AnchorPoint = C
-	paste.Position = UDim2.new(1, -(53 + pasteW / 2), 0.5, 0)
-	corner(paste, 12)
-	local pasteIcon = Icon(paste, "clipboardFill", 15, T.accText)
-	pasteIcon.Frame.AnchorPoint = Vector2.new(0, 0.5)
-	pasteIcon.Frame.Position = UDim2.new(0, 11, 0.5, 0)
-	local pasteText = label(paste, {
-		Position = UDim2.fromOffset(32, 0),
-		Size = UDim2.new(1, -32, 1, 0),
-		Text = "Paste",
-		FontFace = F_BODY_X,
-		TextSize = 12.5,
-		TextColor3 = T.sub,
-		TextXAlignment = LEFT,
 	})
 
 	-- The arrow: checks the key
@@ -2191,49 +2162,6 @@ local function buildScreen(opt, K, T, keyPath)
 	end)
 	closeBtn.Activated:Connect(function() K.Close() end)
 
-	-- Paste
-	local pasteScale = make("UIScale", { Parent = paste })
-	press(paste, pasteScale, 0.94)
-	paste.MouseEnter:Connect(function()
-		tw(paste, 0.18, { BackgroundColor3 = T.elHover })
-		tw(pasteText, 0.18, { TextColor3 = T.text })
-	end)
-	paste.MouseLeave:Connect(function()
-		tw(paste, 0.18, { BackgroundColor3 = T.el })
-		tw(pasteText, 0.18, { TextColor3 = T.sub })
-	end)
-	paste.Activated:Connect(function()
-		if K.done then return end
-		local text = nil
-		if X.getclipboard then
-			local ok, v = pcall(X.getclipboard)
-			if ok and type(v) == "string" then text = trim(v) end
-		end
-		if text and text ~= "" then
-			input.Text = text
-			toast("Pasted from clipboard", "clipboard")
-			return
-		end
-		-- No getclipboard: empty the box, focus it and press Ctrl+V for the player
-		local before = input.Text
-		if not touchOnly then
-			input.Text = ""
-			input:CaptureFocus()
-			task.wait(0.05)
-			if pressCtrlV() then
-				local started = os.clock()
-				while input.Text == "" and os.clock() - started < 0.5 do task.wait() end
-			end
-		end
-		if trim(input.Text) ~= "" then
-			toast("Pasted from clipboard", "clipboard")
-		else
-			input.Text = before
-			toast(touchOnly and "Clipboard is blocked, type it instead" or "Press Ctrl+V to paste your key", "alert")
-			if not touchOnly then input:CaptureFocus() end
-		end
-	end)
-
 	-- Arrow
 	press(go, goScale, 0.9)
 	go.MouseEnter:Connect(function()
@@ -2290,10 +2218,11 @@ local function buildScreen(opt, K, T, keyPath)
 		end)
 		return opened or copied
 	end
+	-- Same as the design: "Get key" opens the steps view. Its "Copy key link" button
+	-- opens the page, copies the link and shows the notification.
 	getBtn.Activated:Connect(function()
 		if K.done then return end
-		say("get")
-		openKeyPage()
+		show("get")
 	end)
 
 	-- Switch buttons
