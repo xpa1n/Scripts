@@ -25,7 +25,7 @@
 	The game behind is blurred with a BlurEffect in Lighting. Nothing blurs GUI.
 ]]
 
-local MochiKey = { Version = "1.4" }
+local MochiKey = { Version = "1.5" }
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -184,6 +184,7 @@ local F_MONO_SEMI = Font.new("rbxasset://fonts/families/RobotoMono.json", Enum.F
 ------------------------------------------------------------------------
 
 local C = Vector2.new(0.5, 0.5)
+local SMOOTH = 0.02 -- degrees; a rotation this small can't be seen but stops pixel snapping
 local FULL = UDim.new(1, 0)
 local OUT = Enum.EasingDirection.Out
 local INOUT = Enum.EasingDirection.InOut
@@ -248,10 +249,18 @@ local function box(parent, color, props)
 	return frame(parent, props)
 end
 
+-- Nunito and Roboto Mono render about 15% smaller in Roblox than the same size in a
+-- browser (Fredoka matches), so their sizes are scaled up. Sizes in the code are the CSS ones.
+local BODY_K = 1.18
+local function textSize(font, size)
+	if font and font.Family:find("Fredoka") then return size end
+	return size * BODY_K
+end
+
 local function label(parent, props)
 	if props.BackgroundTransparency == nil then props.BackgroundTransparency = 1 end
 	if props.FontFace == nil then props.FontFace = F_BODY end
-	if props.TextSize == nil then props.TextSize = 14 end
+	props.TextSize = textSize(props.FontFace, props.TextSize or 14)
 	if props.Text == nil then props.Text = "" end
 	props.Parent = parent
 	return make("TextLabel", props)
@@ -261,6 +270,7 @@ local function button(parent, props)
 	if props.BackgroundTransparency == nil then props.BackgroundTransparency = 1 end
 	props.Text = props.Text or ""
 	props.AutoButtonColor = false
+	if props.TextSize then props.TextSize = textSize(props.FontFace or F_BODY, props.TextSize) end
 	props.Parent = parent
 	return make("TextButton", props)
 end
@@ -390,10 +400,11 @@ local function measure(text, font, size, width)
 	elseif font.Weight == Enum.FontWeight.Bold then
 		k = 1.05
 	end
+	local real = textSize(font, size) -- the size the label really uses
 	local ok, v = pcall(function()
-		return TextService:GetTextSize(text, math.ceil(size), enum, Vector2.new(width / k, 10000))
+		return TextService:GetTextSize(text, math.ceil(real), enum, Vector2.new(width / k, 10000))
 	end)
-	if not ok then v = Vector2.new(#text * size * 0.6, size * 1.3) end
+	if not ok then v = Vector2.new(#text * real * 0.6, real * 1.3) end
 	v = Vector2.new(math.ceil(v.X * k), v.Y)
 	measureCache[key] = v
 	return v
@@ -534,6 +545,7 @@ local function draw(holder, bx, px, shapes, color, alpha)
 				TextColor3 = color,
 				TextTransparency = 1 - alpha,
 			})
+			t.TextSize = s[4] * px -- icon glyph: exact size, no body-text scaling
 			parts[#parts + 1] = { t, "TextColor3" }
 		end
 	end
@@ -621,15 +633,21 @@ local function newMascot(parent, w, T, mood)
 	M.Root, M.Body = root, body
 
 	draw(body, BOX, px, { { "line", 32.5, 11, 39.5, 4.5, 5.5 } }, T.leaf)
-	-- The mochi shape: a soft dome (a circle that matches the SVG's top curve, cut off
-	-- halfway down) sitting on a wide flat pill for the squashed bottom.
+	-- The mochi shape, with no clipping so it can move smoothly (see the float in
+	-- buildScreen): a wide flat pill for the squashed bottom, a big circle for the dome
+	-- and two "shoulder" circles that widen the dome like the SVG's curve.
 	-- Outline first (a little bigger), then the fill on top, so the shapes read as one.
+	local function bodyShapes(e)
+		return {
+			{ "rect", 6 - e, 23 - e, 52 + e * 2, 32 + e * 2, "full" },
+			{ "dot", 32, 33.25, 21.25 + e, 21.25 + e },
+			{ "dot", 20, 33, 14 + e, 14 + e },
+			{ "dot", 44, 33, 14 + e, 14 + e },
+		}
+	end
 	local e = (T.light and 1.6 or 1) / 2
-	draw(body, BOX, px, {
-		{ "dome", 32, 38, 26 + e, 42 },
-		{ "rect", 6 - e, 23 - e, 52 + e * 2, 32 + e * 2, "full" },
-	}, T.light and T.acc1 or BLACK, T.light and 0.4 or 0.12)
-	draw(body, BOX, px, { { "dome", 32, 38, 26, 42 }, { "rect", 6, 23, 52, 32, "full" } }, T.knob)
+	draw(body, BOX, px, bodyShapes(e), T.light and T.acc1 or BLACK, T.light and 0.4 or 0.12)
+	draw(body, BOX, px, bodyShapes(0), T.knob)
 	draw(body, BOX, px, { { "dot", 16.5, 41.5, 4.2, 2.4 }, { "dot", 47.5, 41.5, 4.2, 2.4 } }, BLUSH, 0.75)
 
 	local face
@@ -655,11 +673,23 @@ local function newMascot(parent, w, T, mood)
 				M.eyes[#M.eyes + 1] = { f = p[1], size = p[1].Size }
 			end
 			local b = { 27, 38.5, 10, 4.5 }
-			draw(mouthBox(b), b, px, { { "arc", 28.5, 32, 40.5, 1.1, 2, "down" }, { "arc", 32, 35.5, 40.5, 1.1, 2, "down" } }, EYE)
+			-- Curves are short lines with round ends (no clipping, see above)
+			draw(mouthBox(b), b, px, {
+				{ "line", 28.5, 40.5, 30.25, 41.7, 2 },
+				{ "line", 30.25, 41.7, 32, 40.5, 2 },
+				{ "line", 32, 40.5, 33.75, 41.7, 2 },
+				{ "line", 33.75, 41.7, 35.5, 40.5, 2 },
+			}, EYE)
 		elseif m == "happy" then
-			draw(face, BOX, px, { { "arc", 19.5, 26.5, 36, 2.25, 2, "up" }, { "arc", 37.5, 44.5, 36, 2.25, 2, "up" } }, EYE)
+			draw(face, BOX, px, {
+				{ "line", 19.5, 36, 23, 33.6, 2 },
+				{ "line", 23, 33.6, 26.5, 36, 2 },
+				{ "line", 37.5, 36, 41, 33.6, 2 },
+				{ "line", 41, 33.6, 44.5, 36, 2 },
+			}, EYE)
 			local b = { 27, 39, 10, 5 }
-			draw(mouthBox(b), b, px, { { "cap", 28, 36, 40, 3, "down" } }, MOUTH_FILL)
+			-- D-shaped open smile: a pill plus a square-cornered top half
+			draw(mouthBox(b), b, px, { { "rect", 28.3, 39.8, 7.4, 3.6, "full" }, { "rect", 28.3, 39.8, 7.4, 1.8, 0.4 } }, MOUTH_FILL)
 		elseif m == "worried" then
 			draw(face, BOX, px, {
 				{ "dot", 23, 35.5, 2.4, 3 },
@@ -673,7 +703,11 @@ local function newMascot(parent, w, T, mood)
 		else -- sad
 			draw(face, BOX, px, { { "dot", 23, 36, 2.4, 2.8 }, { "dot", 41, 36, 2.4, 2.8 } }, EYE)
 			local b = { 27, 41, 10, 4.5 }
-			draw(mouthBox(b), b, px, { { "arc", 28.5, 35.5, 44, 1.6, 2, "up" } }, EYE)
+			draw(mouthBox(b), b, px, {
+				{ "line", 28.5, 44, 30.4, 42.8, 2 },
+				{ "line", 30.4, 42.8, 33.6, 42.8, 2 },
+				{ "line", 33.6, 42.8, 35.5, 44, 2 },
+			}, EYE)
 			draw(face, BOX, px, { { "dot", 21, 44.4, 1.4, 1.4 }, { "rect", 20, 40.6, 2, 2, 0.3, 45 } }, DROP)
 		end
 	end
@@ -902,25 +936,36 @@ local function buildScreen(opt, K, T, keyPath)
 	local backdrop = frame(root, { Name = "Backdrop", Size = UDim2.fromScale(1, 1) })
 	local tint = frame(backdrop, { Size = UDim2.fromScale(1, 1) })
 	box(tint, T.bg, { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 0.38 })
-	-- radial-gradient(ellipse 60% 55% at 50% 46%, bg 88%, transparent) as stacked rounded frames
-	local tintA = radialAlphas(18, 0.88)
-	for j = 18, 1, -1 do
-		local k = j / 18
-		local f = box(tint, T.bg, {
-			AnchorPoint = C,
-			Position = UDim2.fromScale(0.5, 0.46),
-			Size = UDim2.fromScale(1.2 * k, 1.1 * k),
-			BackgroundTransparency = 1 - tintA[j],
-		})
-		corner(f, FULL)
-	end
+	-- radial-gradient(ellipse 60% 55% at 50% 46%, bg 88%, transparent), made from two
+	-- smooth fades multiplied together: a CanvasGroup with a left-right fade holding a
+	-- frame with a top-bottom fade. No rings, and only two layers.
+	local tintGroup = make("CanvasGroup", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Parent = tint })
+	make("UIGradient", {
+		Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.833),
+			NumberSequenceKeypoint.new(0.5, 0),
+			NumberSequenceKeypoint.new(1, 0.833),
+		}),
+		Parent = tintGroup,
+	})
+	local tintV = box(tintGroup, T.bg, { Size = UDim2.fromScale(1, 1) })
+	make("UIGradient", {
+		Rotation = 90,
+		Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.856),
+			NumberSequenceKeypoint.new(0.46, 0.12),
+			NumberSequenceKeypoint.new(1, 0.984),
+		}),
+		Parent = tintV,
+	})
 
 	-- Glow: 760px circle of --glow at 20%, breathing
 	local glow = frame(backdrop, { AnchorPoint = C, Position = UDim2.fromScale(0.5, 0.44), Size = UDim2.fromOffset(760, 760) })
-	local glowA = radialAlphas(14, 0.2)
+	local GLOW_N = 8
+	local glowA = radialAlphas(GLOW_N, 0.2)
 	local glowRings = {}
-	for j = 14, 1, -1 do
-		local k = j / 14
+	for j = GLOW_N, 1, -1 do
+		local k = j / GLOW_N
 		local f = box(glow, T.glow, { AnchorPoint = C, Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(k, k), BackgroundTransparency = 1 })
 		corner(f, FULL)
 		glowRings[j] = f
@@ -941,7 +986,7 @@ local function buildScreen(opt, K, T, keyPath)
 
 	ticks[#ticks + 1] = function(now)
 		if reduced then
-			for j = 1, 14 do glowRings[j].BackgroundTransparency = 1 - glowA[j] * back.alpha end
+			for j = 1, GLOW_N do glowRings[j].BackgroundTransparency = 1 - glowA[j] * back.alpha end
 			for _, m in ipairs(motes) do m.f.BackgroundTransparency = 1 end
 			return
 		end
@@ -949,7 +994,7 @@ local function buildScreen(opt, K, T, keyPath)
 		local gs = glowSize * (1 + 0.08 * k)
 		glow.Size = UDim2.fromOffset(gs, gs)
 		local mult = (1 + 0.3 * k) * back.alpha
-		for j = 1, 14 do glowRings[j].BackgroundTransparency = 1 - glowA[j] * mult end
+		for j = 1, GLOW_N do glowRings[j].BackgroundTransparency = 1 - glowA[j] * mult end
 		for _, m in ipairs(motes) do
 			local p = ((now + m.shift) % m.d) / m.d
 			local a
@@ -996,9 +1041,12 @@ local function buildScreen(opt, K, T, keyPath)
 	local colScale = addScale(column)
 
 	-- Mascot, floating
-	local heroFloat = frame(column, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromScale(0.5, 0), Size = UDim2.fromOffset(88, 80) })
+	-- Roblox snaps GUI to whole pixels, so a slow 5px float moves in visible jumps.
+	-- A tiny Rotation turns the snapping off. It also turns clipping off, which is why
+	-- the mascot is drawn without any ClipsDescendants.
+	local heroFloat = frame(column, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromScale(0.5, 0), Size = UDim2.fromOffset(88, 80), Rotation = SMOOTH })
 	local hero = newMascot(heroFloat, 88, T, "normal")
-	local heroShadow = box(column, T.text, { AnchorPoint = C, Position = UDim2.fromOffset(COL_W / 2, 88), Size = UDim2.fromOffset(56, 8), BackgroundTransparency = 1 })
+	local heroShadow = box(column, T.text, { AnchorPoint = C, Position = UDim2.fromOffset(COL_W / 2, 88), Size = UDim2.fromOffset(56, 8), BackgroundTransparency = 1, Rotation = SMOOTH })
 	corner(heroShadow, FULL)
 	local heroShadowState = { scale = 1, alpha = 1 }
 
@@ -1053,9 +1101,9 @@ local function buildScreen(opt, K, T, keyPath)
 		TextXAlignment = LEFT,
 	})
 	-- Two little dots that bob next to the bubble
-	local dotA = box(bubble, T.acc1, { Position = UDim2.new(1, -2, 0, 10), Size = UDim2.fromOffset(9, 9), BackgroundTransparency = 0.45 })
+	local dotA = box(bubble, T.acc1, { Position = UDim2.new(1, -2, 0, 10), Size = UDim2.fromOffset(9, 9), BackgroundTransparency = 0.45, Rotation = SMOOTH })
 	corner(dotA, FULL)
-	local dotB = box(bubble, T.acc2, { Position = UDim2.new(1, 9, 0, 24), Size = UDim2.fromOffset(5, 5), BackgroundTransparency = 0.45 })
+	local dotB = box(bubble, T.acc2, { Position = UDim2.new(1, 9, 0, 24), Size = UDim2.fromOffset(5, 5), BackgroundTransparency = 0.45, Rotation = SMOOTH })
 	corner(dotB, FULL)
 
 	ticks[#ticks + 1] = function(now)
@@ -1141,7 +1189,7 @@ local function buildScreen(opt, K, T, keyPath)
 		PlaceholderColor3 = T.faint,
 		TextColor3 = T.text,
 		FontFace = F_BODY,
-		TextSize = 14,
+		TextSize = textSize(F_BODY, 14),
 		TextXAlignment = LEFT,
 		ClearTextOnFocus = false,
 		ClipsDescendants = true,
@@ -1340,8 +1388,8 @@ local function buildScreen(opt, K, T, keyPath)
 	linkCheck.Frame.Visible = false
 	local linkCheckScale = make("UIScale", { Parent = linkCheck.Frame })
 	local linkTitle = label(linkBtn, {
-		Position = UDim2.fromOffset(63, 13),
-		Size = UDim2.new(1, -107, 0, 17),
+		Position = UDim2.fromOffset(63, 10),
+		Size = UDim2.new(1, -107, 0, 20),
 		Text = "Copy key link",
 		FontFace = F_BODY_X,
 		TextSize = 14.5,
@@ -1351,7 +1399,7 @@ local function buildScreen(opt, K, T, keyPath)
 	})
 	label(linkBtn, {
 		Position = UDim2.fromOffset(63, 31),
-		Size = UDim2.new(1, -107, 0, 15),
+		Size = UDim2.new(1, -107, 0, 17),
 		Text = (opt.KeyLink:gsub("^https?://", "")),
 		FontFace = F_MONO_SEMI,
 		TextSize = 11.5,
@@ -1396,8 +1444,8 @@ local function buildScreen(opt, K, T, keyPath)
 	local pillText = label(pill, { AutomaticSize = AUTO_X, Size = UDim2.fromOffset(0, 32), Text = "Copy invite", FontFace = F_BODY_X, TextSize = 12, TextColor3 = T.accText, LayoutOrder = 2 })
 	local discordTextW = COL_W - 63 - pillW - 9 - 12
 	label(discordBtn, {
-		Position = UDim2.fromOffset(63, 13),
-		Size = UDim2.fromOffset(discordTextW, 17),
+		Position = UDim2.fromOffset(63, 10),
+		Size = UDim2.fromOffset(discordTextW, 20),
 		Text = "Join the Discord",
 		FontFace = F_BODY_X,
 		TextSize = 14.5,
@@ -1406,7 +1454,7 @@ local function buildScreen(opt, K, T, keyPath)
 	})
 	label(discordBtn, {
 		Position = UDim2.fromOffset(63, 31),
-		Size = UDim2.fromOffset(discordTextW, 15),
+		Size = UDim2.fromOffset(discordTextW, 17),
 		Text = opt.Discord,
 		FontFace = F_MONO_SEMI,
 		TextSize = 11.5,
@@ -1421,11 +1469,11 @@ local function buildScreen(opt, K, T, keyPath)
 	getView.Size = UDim2.new(1, 0, 0, views.get.h)
 
 	---------------- "You're in!" screen ----------------
-	local done = frame(layer, { AnchorPoint = C, Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(400, 264), Visible = false })
+	local done = frame(layer, { AnchorPoint = C, Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(460, 264), Visible = false })
 	local doneScale = addScale(done)
-	local doneMascotHolder = frame(done, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromScale(0.5, 0), Size = UDim2.fromOffset(104, 94) })
+	local doneMascotHolder = frame(done, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromScale(0.5, 0), Size = UDim2.fromOffset(104, 94), Rotation = SMOOTH })
 	local doneMascot = newMascot(doneMascotHolder, 104, T, "happy")
-	local doneShadow = box(done, T.text, { AnchorPoint = C, Position = UDim2.new(0.5, 0, 0, 100.5), Size = UDim2.fromOffset(70, 9), BackgroundTransparency = 1 })
+	local doneShadow = box(done, T.text, { AnchorPoint = C, Position = UDim2.new(0.5, 0, 0, 100.5), Size = UDim2.fromOffset(70, 9), BackgroundTransparency = 1, Rotation = SMOOTH })
 	corner(doneShadow, FULL)
 	local doneShadowState = { scale = 0.3, alpha = 0 }
 	local doneBob = { on = false, t = 0 }
@@ -1915,11 +1963,11 @@ local function buildScreen(opt, K, T, keyPath)
 		local t = input.Text
 		if t == "" then
 			input.FontFace = F_BODY
-			input.TextSize = 14
+			input.TextSize = textSize(F_BODY, 14)
 			return
 		end
 		input.FontFace = F_MONO
-		input.TextSize = math.clamp(math.floor(inputW / (#t * 0.62)), 10, 15)
+		input.TextSize = math.clamp(math.floor(inputW / (#t * 0.62)), 10, textSize(F_MONO, 15))
 	end
 	local function onInput()
 		if K.done then return end
