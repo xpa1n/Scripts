@@ -25,7 +25,7 @@
 	The game behind is blurred with a BlurEffect in Lighting. Nothing blurs GUI.
 ]]
 
-local MochiKey = { Version = "1.1" }
+local MochiKey = { Version = "1.2" }
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -50,6 +50,11 @@ local X = {
 	delfile = fnOrNil(delfile),
 	setclipboard = fnOrNil(setclipboard) or fnOrNil(toclipboard),
 	getclipboard = fnOrNil(getclipboard) or fnOrNil(fromclipboard),
+	keypress = fnOrNil(keypress),
+	keyrelease = fnOrNil(keyrelease),
+	-- Opening a browser: only some executors have this, under different names
+	openurl = fnOrNil(openurl) or fnOrNil(open_url) or fnOrNil(OpenURL)
+		or (type(syn) == "table" and fnOrNil(syn.open_url)) or nil,
 }
 
 ------------------------------------------------------------------------
@@ -797,6 +802,33 @@ local function clip(text)
 	return (pcall(X.setclipboard, text))
 end
 
+-- Tries to open a link in the player's browser. True means some way of opening it
+-- ran without an error, which doesn't promise a browser actually opened.
+local function openUrl(url)
+	if X.openurl and pcall(X.openurl, url) then return true end
+	if pcall(function() GuiService:OpenBrowserWindow(url) end) then return true end
+	return false
+end
+
+-- Presses Ctrl+V for the player (for executors without getclipboard).
+-- Uses the executor's keypress (Windows key codes) or VirtualInputManager.
+local function pressCtrlV()
+	if X.keypress and X.keyrelease then
+		local ok = pcall(X.keypress, 0x11) -- Ctrl
+		ok = ok and pcall(X.keypress, 0x56) -- V
+		pcall(X.keyrelease, 0x56)
+		pcall(X.keyrelease, 0x11)
+		if ok then return true end
+	end
+	local okVim, vim = pcall(function() return game:GetService("VirtualInputManager") end)
+	if not okVim or not vim then return false end
+	local ok = pcall(function() vim:SendKeyEvent(true, Enum.KeyCode.LeftControl, false, game) end)
+	ok = ok and pcall(function() vim:SendKeyEvent(true, Enum.KeyCode.V, false, game) end)
+	pcall(function() vim:SendKeyEvent(false, Enum.KeyCode.V, false, game) end)
+	pcall(function() vim:SendKeyEvent(false, Enum.KeyCode.LeftControl, false, game) end)
+	return ok
+end
+
 local function guiParent()
 	if X.gethui then
 		local ok, h = pcall(X.gethui)
@@ -1539,7 +1571,16 @@ local function buildScreen(opt, K, T, keyPath)
 		corner(card, 17)
 		stroke(card, T.ss, T.ssA, 1)
 		local cardScale = make("UIScale", { Scale = 0.9, Parent = card })
-		local face = box(card, T.warn, { Position = UDim2.fromOffset(12, 12), Size = UDim2.fromOffset(38, 38), BackgroundTransparency = 0.84 })
+		-- Type sets the colour like the hub's .mn-success / .mn-warning / .mn-error
+		local accent = T.warn
+		if o.Type == "success" then
+			accent = T.ok
+		elseif o.Type == "error" then
+			accent = T.bad
+		elseif o.Type == "info" then
+			accent = T.acc1
+		end
+		local face = box(card, accent, { Position = UDim2.fromOffset(12, 12), Size = UDim2.fromOffset(38, 38), BackgroundTransparency = 0.84 })
 		corner(face, 12)
 		local nm = newMascot(face, 28, T, o.Mood or "normal")
 		nm.Root.AnchorPoint = C
@@ -1620,9 +1661,9 @@ local function buildScreen(opt, K, T, keyPath)
 		end)
 		xb.Activated:Connect(close)
 		-- Timer bar. Inset from the rounded corners because Frames can't clip to them.
-		local track = box(card, T.warn, { AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 12, 1, -1), Size = UDim2.new(1, -24, 0, 3), BackgroundTransparency = 0.85 })
+		local track = box(card, accent, { AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 12, 1, -1), Size = UDim2.new(1, -24, 0, 3), BackgroundTransparency = 0.85 })
 		corner(track, 2)
-		local barN = box(track, T.warn, { Size = UDim2.fromScale(1, 1) })
+		local barN = box(track, accent, { Size = UDim2.fromScale(1, 1) })
 		corner(barN, 2)
 
 		local list = capture(holder)
@@ -2171,8 +2212,24 @@ local function buildScreen(opt, K, T, keyPath)
 		if text and text ~= "" then
 			input.Text = text
 			toast("Pasted from clipboard", "clipboard")
+			return
+		end
+		-- No getclipboard: empty the box, focus it and press Ctrl+V for the player
+		local before = input.Text
+		if not touchOnly then
+			input.Text = ""
+			input:CaptureFocus()
+			task.wait(0.05)
+			if pressCtrlV() then
+				local started = os.clock()
+				while input.Text == "" and os.clock() - started < 0.5 do task.wait() end
+			end
+		end
+		if trim(input.Text) ~= "" then
+			toast("Pasted from clipboard", "clipboard")
 		else
-			toast("Clipboard is blocked, type it instead", "alert")
+			input.Text = before
+			toast(touchOnly and "Clipboard is blocked, type it instead" or "Press Ctrl+V to paste your key", "alert")
 			if not touchOnly then input:CaptureFocus() end
 		end
 	end)
@@ -2206,7 +2263,38 @@ local function buildScreen(opt, K, T, keyPath)
 		tw(getIcon.Frame, 0.5, { Rotation = 0 }, BACK)
 		tw(getIconScale, 0.5, { Scale = 1 }, BACK)
 	end)
-	getBtn.Activated:Connect(function() show("get") end)
+	-- Opens the key page, copies the link as a backup, and says what happened
+	local function openKeyPage()
+		local opened = openUrl(opt.KeyLink)
+		local copied = clip(opt.KeyLink)
+		local content
+		if opened and copied then
+			content = "Your browser should be on the key page now. If it didn't open, the link is copied, so paste it in your browser."
+		elseif opened then
+			content = "Your browser should be on the key page now. If it didn't open, go to " .. opt.KeyLink
+		elseif copied then
+			content = "The key link is copied. Paste it in your browser to get your key."
+		else
+			content = "Open this link in your browser: " .. opt.KeyLink
+		end
+		notify({
+			Type = "success",
+			Title = opened and "Opening the key page" or "Get your key",
+			Content = content,
+			Mood = "happy",
+			Duration = 10,
+		})
+		stepDone(1, true)
+		task.delay(0.9, function()
+			if alive then stepDone(2, true) end
+		end)
+		return opened or copied
+	end
+	getBtn.Activated:Connect(function()
+		if K.done then return end
+		say("get")
+		openKeyPage()
+	end)
 
 	-- Switch buttons
 	local function switchHover(b, ic, l, hoverColor, onEnterIcon)
@@ -2243,7 +2331,7 @@ local function buildScreen(opt, K, T, keyPath)
 	-- Copy key link
 	local linkTok = 0
 	linkBtn.Activated:Connect(function()
-		local ok = clip(opt.KeyLink)
+		openKeyPage()
 		linkTok = linkTok + 1
 		local my = linkTok
 		tw(linkOk, 0.3, { BackgroundTransparency = 0 })
@@ -2261,15 +2349,6 @@ local function buildScreen(opt, K, T, keyPath)
 			linkIcon.Frame.Visible = true
 			linkCheck.Frame.Visible = false
 			linkChevron.Frame.Visible = true
-		end)
-		if ok then
-			toast("Link copied, open it in your browser", "check")
-		else
-			toast("Couldn't copy, the link is on the button", "alert")
-		end
-		stepDone(1, true)
-		task.delay(0.9, function()
-			if alive then stepDone(2, true) end
 		end)
 	end)
 	local linkChipScale = make("UIScale", { Parent = linkChip })
