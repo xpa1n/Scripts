@@ -25,7 +25,7 @@
 	The game behind is blurred with a BlurEffect in Lighting. Nothing blurs GUI.
 ]]
 
-local MochiKey = { Version = "1.0" }
+local MochiKey = { Version = "1.1" }
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -196,10 +196,29 @@ local function trim(s)
 	return (tostring(s or ""):match("^%s*(.-)%s*$"))
 end
 
+local function log(...)
+	print("[MochiKey]", ...)
+end
+
+-- User callbacks run in their own thread with no pcall around them. Some executors'
+-- pcall can't yield (HttpGet yields), and this way any error prints with a stack trace.
 local function safeCall(f, ...)
-	if type(f) ~= "function" then return end
-	local ok, err = pcall(f, ...)
-	if not ok then warn("[MochiKey] " .. tostring(err)) end
+	if type(f) == "function" then task.spawn(f, ...) end
+end
+
+-- Runs f in its own thread and waits for it to finish, so f can yield anywhere.
+-- Returns ok, result. If f errors, Roblox prints the error and ok is false.
+local function callAndWait(f, ...)
+	local args = table.pack(...)
+	local state = { done = false }
+	local thread = task.spawn(function()
+		state.result = f(table.unpack(args, 1, args.n))
+		state.done = true
+	end)
+	while not state.done and coroutine.status(thread) ~= "dead" do
+		task.wait()
+	end
+	return state.done, state.result
 end
 
 local function make(class, props)
@@ -341,24 +360,39 @@ local function applyAlpha(list, a)
 	end
 end
 
--- Text size in pixels (GetTextBoundsAsync, cached)
+-- Text size in pixels. Uses the sync GetTextSize with the matching legacy font, so
+-- building the screen never yields. Nunito's legacy enum is the regular weight, so
+-- bold text is measured a bit wider (and wrapped a bit narrower) to stay safe.
+local function legacyFont(name, fallback)
+	local ok, v = pcall(function() return Enum.Font[name] end)
+	if ok and v then return v end
+	return fallback
+end
+local E_FREDOKA = legacyFont("FredokaOne", Enum.Font.GothamBold)
+local E_NUNITO = legacyFont("Nunito", Enum.Font.GothamMedium)
+local E_MONO = legacyFont("RobotoMono", Enum.Font.Code)
+
 local measureCache = {}
 local function measure(text, font, size, width)
 	width = width or 10000
 	local key = text .. "|" .. font.Family .. "|" .. tostring(font.Weight) .. "|" .. size .. "|" .. width
 	local hit = measureCache[key]
 	if hit then return hit end
-	local ok, v = pcall(function()
-		local p = Instance.new("GetTextBoundsParams")
-		p.Text = text
-		p.Font = font
-		p.Size = size
-		p.Width = width
-		return TextService:GetTextBoundsAsync(p)
-	end)
-	if not ok or typeof(v) ~= "Vector2" then
-		v = TextService:GetTextSize(text, size, Enum.Font.GothamBold, Vector2.new(width, 10000))
+	local enum, k = E_NUNITO, 1
+	if font.Family:find("Fredoka") then
+		enum = E_FREDOKA
+	elseif font.Family:find("Mono") then
+		enum = E_MONO
+	elseif font.Weight == Enum.FontWeight.ExtraBold then
+		k = 1.09
+	elseif font.Weight == Enum.FontWeight.Bold then
+		k = 1.05
 	end
+	local ok, v = pcall(function()
+		return TextService:GetTextSize(text, math.ceil(size), enum, Vector2.new(width / k, 10000))
+	end)
+	if not ok then v = Vector2.new(#text * size * 0.6, size * 1.3) end
+	v = Vector2.new(math.ceil(v.X * k), v.Y)
 	measureCache[key] = v
 	return v
 end
@@ -783,9 +817,9 @@ end
 
 -- Calls the user's Validate and tidies what comes back. errored = it threw.
 local function validate(opt, key)
-	local ok, r = pcall(opt.Validate, key)
+	local ok, r = callAndWait(opt.Validate, key)
 	if not ok then
-		warn("[MochiKey] Validate failed: " .. tostring(r))
+		warn("[MochiKey] Validate errored (the error is printed above), so the key counts as wrong")
 		return { Valid = false, Reason = "Invalid" }, true
 	end
 	if type(r) ~= "table" then r = { Valid = r == true } end
@@ -1054,7 +1088,7 @@ local function buildScreen(opt, K, T, keyPath)
 				local m = measure(str, F_HEAD, 18, mid)
 				if math.floor(m.Y / single + 0.5) > lines then lo = mid else hi = mid end
 			end
-			w = hi
+			w = hi + 4
 		end
 		local textH = math.max(lines * single * 1.1, 24)
 		return math.ceil(w) + 40, math.ceil(textH) + 32
@@ -2342,9 +2376,15 @@ end
 -- Init
 ------------------------------------------------------------------------
 
-local function run(opt, K)
-	local dir = opt.Title:gsub("[^%w_%-]", "")
+-- Folder for saved files: the title without spaces or symbols ("Mochi Hub" gives "MochiHub")
+local function saveDir(title)
+	local dir = tostring(title or "Mochi Hub"):gsub("[^%w_%-]", "")
 	if dir == "" then dir = "MochiHub" end
+	return dir
+end
+
+local function run(opt, K)
+	local dir = saveDir(opt.Title)
 	local keyPath = dir .. "/key.txt"
 
 	-- The hub's saved theme wins when there is one
@@ -2354,19 +2394,29 @@ local function run(opt, K)
 	-- A saved key that's still valid skips the screen
 	local saved = string.upper(trim(fileRead(keyPath) or ""))
 	if saved ~= "" then
+		log("Found a saved key, checking it")
 		local r, errored = validate(opt, saved)
 		if r.Valid then
 			r.Key = saved
 			K.Skipped = true
 			K.done = true
+			log("Saved key is still valid, so the key screen is skipped. MochiKey:ResetKey(\"" .. opt.Title .. "\") shows it again.")
 			safeCall(opt.OnSuccess, r)
 			return
 		elseif not errored then
+			log("Saved key is " .. string.lower(r.Reason) .. ", deleting it")
 			fileDelete(keyPath)
 		end
 	end
 
 	buildScreen(opt, K, buildTheme(opt.Theme), keyPath)
+	log("Key screen open (theme " .. opt.Theme .. ")")
+end
+
+-- Deletes the saved key so the screen shows next time. Handy while testing.
+function MochiKey:ResetKey(title)
+	if type(self) == "string" and title == nil then title = self end -- MochiKey.ResetKey("...")
+	fileDelete(saveDir(title) .. "/key.txt")
 end
 
 function MochiKey:Init(o)
@@ -2385,10 +2435,8 @@ function MochiKey:Init(o)
 	}
 	local K = {}
 	K.Close = function() K._closeRequested = true end
-	task.spawn(function()
-		local ok, err = pcall(run, opt, K)
-		if not ok then warn("[MochiKey] " .. tostring(err)) end
-	end)
+	-- No pcall here on purpose: if something breaks, the executor console shows the real error
+	task.spawn(run, opt, K)
 	return K
 end
 
